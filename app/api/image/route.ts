@@ -1,11 +1,12 @@
 import { auth } from "@clerk/nextjs";
 import { NextResponse } from "next/server";
-import Configuration from "openai";
-import OpenAI from "openai";
+const { Configuration, OpenAIApi } = require("openai");
 
-const openai = new Configuration({
+const configuration = new Configuration({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+const openai = new OpenAIApi(configuration);
 
 export async function POST(req: Request) {
   try {
@@ -22,21 +23,21 @@ export async function POST(req: Request) {
     }
 
     if (!amount) {
-      return new NextResponse("amount is required", { status: 400 });
+      return new NextResponse("Amount is required", { status: 400 });
     }
 
     if (!resolution) {
-      return new NextResponse("resolution is required", { status: 400 });
+      return new NextResponse("Resolution is required", { status: 400 });
     }
 
     if (!prompt) {
       return new NextResponse("Prompt is required", { status: 400 });
     }
 
-    const response = await openai.Image.create({
+    const response = await openai.createImage({
       prompt,
-      n = parseInt(amount, 10),
-      size = resolution,
+      n: parseInt(amount, 10),
+      size: resolution,
     });
 
     return NextResponse.json(response.data.data);
