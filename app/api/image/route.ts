@@ -1,12 +1,12 @@
 import { auth } from "@clerk/nextjs";
 import { NextResponse } from "next/server";
-const { Configuration, OpenAIApi } = require("openai");
+import OpenAI from "openai";
 
-const configuration = new Configuration({
+import { increaseApiLimit, checkApiLimit } from "@/lib/api-limit";
+
+const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
-
-const openai = new OpenAIApi(configuration);
 
 export async function POST(req: Request) {
   try {
@@ -22,6 +22,10 @@ export async function POST(req: Request) {
       return new NextResponse("OpenAI API Key not configured", { status: 500 });
     }
 
+    if (!prompt) {
+      return new NextResponse("Prompt is required", { status: 400 });
+    }
+
     if (!amount) {
       return new NextResponse("Amount is required", { status: 400 });
     }
@@ -30,17 +34,21 @@ export async function POST(req: Request) {
       return new NextResponse("Resolution is required", { status: 400 });
     }
 
-    if (!prompt) {
-      return new NextResponse("Prompt is required", { status: 400 });
+    const freeTrial = await checkApiLimit();
+
+    if (!freeTrial) {
+      return new NextResponse("Free trial has expired.", { status: 403 });
     }
 
-    const response = await openai.createImage({
+    const response = await openai.images.generate({
       prompt,
       n: parseInt(amount, 10),
       size: resolution,
     });
 
-    return NextResponse.json(response.data.data);
+    await increaseApiLimit();
+
+    return NextResponse.json(response.data);
   } catch (error) {
     console.log("IMAGE_ERROR", error);
     return new NextResponse("Internal error", { status: 500 });
